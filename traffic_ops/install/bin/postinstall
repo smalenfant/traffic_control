@@ -204,12 +204,12 @@ EOF
 		my $parametersJson = "/opt/traffic_ops/install/data/json/parameter.json";
 		writeJson( $parametersJson, { name => 'kickstart.files.location', config_file => 'mkisofs', value => $kickstartFilesFqn } );
 
+		execCommand( "/bin/mkdir", "-p", $kickstartFilesFqn );
 		execCommand( "/bin/cp", "/opt/traffic_ops/install/data/perl/osversions.cfg", $kickstartFilesFqn );
 
 		if ( !$skip ) {
 			print "\nUntarring CentOS 6.5 ISO kickstart tar file.\n";
 			print "\nFirst creating $kickstartFilesFqn.\n";
-			execCommand( "/bin/mkdir", "-p", $kickstartFilesFqn );
 			print "\nAnd then the untar.\n";
 			execCommand( "/bin/tar", "-xzf", $centos65TarballFqn, "-C", $kickstartFilesFqn );
 		}
