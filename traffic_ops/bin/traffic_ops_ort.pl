@@ -25,7 +25,7 @@ use MIME::Base64;
 use Data::Dumper;
 
 $| = 1;
-my $script_version = "0.55b";
+my $script_version = "0.55c";
 my $date           = `/bin/date`;
 chomp($date);
 print "$date\nVersion of this script: $script_version\n";
