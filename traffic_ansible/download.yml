@@ -1,0 +1,9 @@
+---
+# Download few things...
+- name: Install InfluxDB
+  hosts: influxdb
+  tasks:
+   - get_url: url={{ influxdb_url }} dest=/vagrant/.cache/{{ influxdb_url|basename }}
+     run_once: yes
+
+

@@ -1,0 +1,14 @@
+---
+# Master playlist for vagrant
+
+#- hosts: vagrant
+#  tasks:
+#   - debug: var=hostvars
+
+- hosts: vagrant
+  sudo: yes
+  roles:
+   - hosts
+   - yum-cache
+
+#- include: influxdb.yml

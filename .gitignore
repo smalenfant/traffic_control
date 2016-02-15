@@ -2,6 +2,8 @@
 .*.swp
 .DS_Store
 *.bak
+.cache/
+.vagrant/
 .idea/
 cpanfile.snapshot
 rpm/build.number

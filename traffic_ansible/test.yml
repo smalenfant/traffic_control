@@ -1,0 +1,6 @@
+---
+- name: Create the DATABASES and install the retention policies (NEW)
+  hosts: influxdb
+  sudo: yes
+  tasks:
+   - debug: var=retention_policies

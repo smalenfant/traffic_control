@@ -1,0 +1,12 @@
+---
+# roles/yum-cache/tasks/main.yml
+# This attempts at caching RPMS by OS versions
+- name: Create RPM cache directory
+  file: name='/vagrant/.cache/{{ ansible_distribution_version }}' state=directory
+
+- name: Change Yum Cache directory
+  ini_file: dest=/etc/yum.conf section=main option=cachedir value='/vagrant/.cache/{{ ansible_distribution_version }}'
+
+- name: Enable Yum to keep files after installation
+  ini_file: dest=/etc/yum.conf section=main option=keepcache value=1
+

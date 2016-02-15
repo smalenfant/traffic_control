@@ -1,0 +1,11 @@
+---
+# roles/influxdb/defaults/main.yml
+
+# Default to 0.10.0-1
+
+influxdb_version: https://s3.amazonaws.com/influxdb/influxdb-0.10.0-1.x86_64.rpm
+influxdb_config_template: influxdb-0.10.0-1.conf.j2
+
+influxdb_dir: /var/lib/influxdb
+# influxdb_state: latest
+

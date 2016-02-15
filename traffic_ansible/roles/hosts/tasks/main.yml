@@ -1,0 +1,8 @@
+---
+# roles/hosts/tasks/main.yml
+
+# Create /etc/hosts
+- lineinfile: dest=/etc/hosts regexp=".*{{ item.hostname }}$"
+              line="{{ item.ip }} {{ item.hostname }}" 
+  when: hosts is defined
+  with_items: hosts

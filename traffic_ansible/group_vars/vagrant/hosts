@@ -1,0 +1,6 @@
+
+hosts:
+ - { hostname: 'influx1.kabletown.net', ip: '192.168.50.101' }
+ - { hostname: 'influx2.kabletown.net', ip: '192.168.50.102' }
+ - { hostname: 'influx3.kabletown.net', ip: '192.168.50.103' }
+

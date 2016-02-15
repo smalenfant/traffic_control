@@ -1,0 +1,23 @@
+- name: Stop InfluxDB
+  service: name=influxdb state=stopped
+  ignore_errors: true
+  tags: clean_influxdb
+  when: clean_influxdb is defined
+
+- name: Delete Old directories
+  file: path={{ item }} state=absent
+  with_items:
+   - /opt/influxdb
+   - /var/lib/influxdb
+   - /var/opt/influxdb
+   - /etc/opt/influxdb
+   - /root/.influxdb
+   - /etc/default/influxdb
+   - /var/log/influxdb
+  tags: clean_influxdb
+  when: clean_influxdb is defined
+
+- name: Remove InfluxDB
+  yum: name=influxdb state=absent
+  tags: clean_influxdb
+  when: clean_influxdb is defined
