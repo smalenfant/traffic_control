@@ -1,7 +1,6 @@
 replication: 3
 
-influxdb_url: https://s3.amazonaws.com/influxdb/influxdb-0.10.0-1.x86_64.rpm
-influxdb_version: /vagrant/.cache/influxdb-0.10.0-1.x86_64.rpm
+influxdb_version: influxdb-0.10.0-1
 
 influx_dbs:
   - cache_stats

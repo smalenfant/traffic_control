@@ -3,13 +3,13 @@
 # Clean the Continuous Queries: ansible-playbook influxdb.yml --tags clean_cq -e clean_cq=1
 # Uninstall and Clean up InfluxDB : ansible-playbook influxdb.yml --tags clean_influxdb -e clean_influxdb=1
 # Do a complete install of Influx DB clusters : ansible-playbook influxdb.yml
-#
 
 # Assumption in this playbook :
-# Have everythin setup like ntp, yum repos, etc...
+# Have everything setup like ntp, yum repos, etc...
 
 # According to documentation, each host has to be installed 1 by 1 and use the join command"
 - name: Install InfluxDB
+  any_errors_fatal: True
   hosts: influxdb
   sudo: yes
   serial: 1
@@ -25,7 +25,7 @@
   tasks:
 
    - name: Drop the Continous Queries
-     command: /usr/bin/influx -host {{ inventory_hostname }} -database {{ item.db }} -execute "DROP CONTINUOUS QUERY {{ item.name }} ON {{ item.db }}"
+     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -database {{ item.db }} -execute "DROP CONTINUOUS QUERY {{ item.name }} ON {{ item.db }}"
      with_items: continuous_queries
      run_once: true
      ignore_errors: true
@@ -37,7 +37,7 @@
       - clean_cq
 
    - name: Create DBs
-     command: /usr/bin/influx -host {{ inventory_hostname }} -execute "CREATE DATABASE IF NOT EXISTS {{ item }}"
+     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -execute "CREATE DATABASE IF NOT EXISTS {{ item }}"
      ignore_errors: true
      run_once: true
      with_items: influx_dbs
@@ -45,7 +45,7 @@
       - create_dbs
  
    - name: Set Retention Policies
-     command: /usr/bin/influx -host {{ inventory_hostname }} -execute "CREATE RETENTION POLICY {{ item[1].name }} ON {{ item[0] }} DURATION {{ item[1].duration }} REPLICATION {{ item[1].replication}} {{ item[1].default|ternary('DEFAULT','') }}"
+     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -execute "CREATE RETENTION POLICY {{ item[1].name }} ON {{ item[0] }} DURATION {{ item[1].duration }} REPLICATION {{ item[1].replication}} {{ item[1].default|ternary('DEFAULT','') }}"
      ignore_errors: true
      run_once: true
      with_nested: 
@@ -55,7 +55,7 @@
       - create_dbs
 
    - name: Setup the Continuous Queries
-     command: /usr/bin/influx -host {{ inventory_hostname }} -database {{ item.db }} -execute "CREATE CONTINUOUS QUERY {{ item.name }} ON {{ item.db }} {{ item.select }}"
+     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -database {{ item.db }} -execute "CREATE CONTINUOUS QUERY {{ item.name }} ON {{ item.db }} {{ item.select }}"
      with_items: continuous_queries
      run_once: true
      ignore_errors: true
