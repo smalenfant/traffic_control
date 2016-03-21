@@ -4,28 +4,23 @@
 - include: clean_influxdb.yml
   when: clean_influxdb is defined
 
-- name: Create InfluxDB Repo file
-  template: src=influxdb.repo.j2 dest=/etc/yum.repos.d/influxdb.repo owner=root group=root mode=755
-
 - name: Install InfluxDB
   yum:
    name: "{{ influxdb_version }}"
    update_cache: "{{ force_yum_cache_update | default('no') }}"
    state: "{{ influxdb_state | default('present') }}"
-   enablerepo: influxdb
+  notify: Restart InfluxDB
 
 - service: name=influxdb enabled=yes
-
-- service: name=influxdb state=started
 
 - name: Set InfluxDB permissions
   file: path=/var/lib/influxdb state=directory recurse=yes owner=influxdb group=influxdb
 
 - template: src={{ influxdb_config_template }} dest=/etc/influxdb/influxdb.conf owner=root group=root mode=755
-  notify: 
-   - Restart InfluxDB
+  notify: Restart InfluxDB
 
 - lineinfile: dest=/etc/default/influxdb state=present regexp=^INFLUXD_OPTS= line="INFLUXD_OPTS=\"{{ INFLUXD_OPTS|default('') }}\""
               create=yes owner=influxdb group=influxdb
 
+- service: name=influxdb state=started
 

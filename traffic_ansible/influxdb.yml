@@ -4,62 +4,26 @@
 # Uninstall and Clean up InfluxDB : ansible-playbook influxdb.yml --tags clean_influxdb -e clean_influxdb=1
 # Do a complete install of Influx DB clusters : ansible-playbook influxdb.yml
 
-# Assumption in this playbook :
-# Have everything setup like ntp, yum repos, etc...
+- name: Download required files
+  hosts: influxdb
+  sudo: yes
+  run_once: yes
+  roles:
+   - { role: local-rpms, tags: local-rpms }
 
-# According to documentation, each host has to be installed 1 by 1 and use the join command"
-- name: Install InfluxDB
-  any_errors_fatal: True
+- name: Install InfluxDB one by one
   hosts: influxdb
   sudo: yes
   serial: 1
   roles: 
   - { role: influxdb, tags: influxdb }
 
-# TODO
-# Use API instead of CLI: /query?q=CREATE+CONTINUOUS+QUERY+processed_by_XXX_1h_2y_rollup+ON+XXXXXXX+BEGIN+SELECT+XXXXXXXXXXXXXX+END&db=_internal
-# Move the Database, retention policies and continuous query to a sub-role of influxdb
 - name: Create the DATABASES and install the retention policies (NEW)
   hosts: influxdb
   sudo: yes
-  tasks:
-
-   - name: Drop the Continous Queries
-     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -database {{ item.db }} -execute "DROP CONTINUOUS QUERY {{ item.name }} ON {{ item.db }}"
-     with_items: continuous_queries
-     run_once: true
-     ignore_errors: true
-     register: results
-     changed_when: "(results.rc == 0)"
-     failed_when: "(results.rc !=0) and ((results.rc == 1) and 'continuous query not found' not in results.stderr)"
-     when: clean_cq is defined
-     tags: 
-      - clean_cq
-
-   - name: Create DBs
-     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -execute "CREATE DATABASE IF NOT EXISTS {{ item }}"
-     ignore_errors: true
-     run_once: true
-     with_items: influx_dbs
-     tags:
-      - create_dbs
- 
-   - name: Set Retention Policies
-     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -execute "CREATE RETENTION POLICY {{ item[1].name }} ON {{ item[0] }} DURATION {{ item[1].duration }} REPLICATION {{ item[1].replication}} {{ item[1].default|ternary('DEFAULT','') }}"
-     ignore_errors: true
-     run_once: true
-     with_nested: 
-      - influx_dbs
-      - retention_policies
-     tags:
-      - create_dbs
-
-   - name: Setup the Continuous Queries
-     command: /usr/bin/influx -host {{ influx_bind_ip|default(ansible_fqdn) }} -database {{ item.db }} -execute "CREATE CONTINUOUS QUERY {{ item.name }} ON {{ item.db }} {{ item.select }}"
-     with_items: continuous_queries
-     run_once: true
-     ignore_errors: true
-     register: results
-     changed_when: "(results.rc == 0)"
-     failed_when: "(results.rc !=0) and ((results.rc == 1) and 'redirect' not in results.stderr)"
-     tags: cq
+  roles:
+   - { role: influxdb/db, tags: db }
+   - { role: influxdb/rp, tags: rp }
+   - { role: influxdb/rp, tags: rp, influx_db: "{{ daily_stats_db }}", influx_rp: "{{ daily_stats_rp }}" }
+   - { role: influxdb/cq, tags: cq }
+   #- { role: influxdb/cq, tags: cq, influx_cq: "{{ test_cq }}" }

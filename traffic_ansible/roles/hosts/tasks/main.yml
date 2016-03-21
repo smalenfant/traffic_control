@@ -5,4 +5,5 @@
 - lineinfile: dest=/etc/hosts regexp=".*{{ item.hostname }}$"
               line="{{ item.ip }} {{ item.hostname }}" 
   when: hosts is defined
-  with_items: hosts
+  with_items:
+   -  "{{ hosts }}"

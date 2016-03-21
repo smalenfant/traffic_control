@@ -1,0 +1,13 @@
+---
+# roles/local-rpms/tasks/main.yml
+# This attempts at downloading rpms and keeping them local.
+
+- name: Create RPM cache directory
+  file: name="{{ local_rpms }}" state=directory
+
+- name: Download RPM locally
+  get_url: url="{{ item }}" dest="{{ local_rpms }}/{{ item|basename }}"
+  with_items:
+   - "{{ urls }}"
+
+

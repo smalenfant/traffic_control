@@ -1,0 +1,10 @@
+---
+# roles/influxdb/rp/tasks/main.yml
+
+- name: Set Retention Policies
+  command: /usr/bin/influx -host {{ ansible_fqdn }} -execute "CREATE RETENTION POLICY {{ item[1].name }} ON {{ item[0] }} DURATION {{ item[1].duration }} REPLICATION {{ item[1].replication}} {{ item[1].default|ternary('DEFAULT','') }}"
+  run_once: true
+  with_nested:
+   - "{{ influx_db }}"
+   - "{{ influx_rp }}"
+

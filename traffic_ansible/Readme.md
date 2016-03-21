@@ -2,15 +2,15 @@
 
 ## InfluxDB
 
-A provided playbook to install clustered InfluxDB (3 nodes). It will install 0.10.0-1 by default directly from InfluxDB web site (see roles/influxdb/defaults/main.yml).
+A provided playbook to install clustered InfluxDB (3 nodes). It will install 0.10.3-1 by default directly from InfluxDB web site (see roles/influxdb/defaults/main.yml).
 
 The following variable can be overriden in group_vars
 
 ### Install via HTTP
 
 ``` 
-influxdb_version: https://s3.amazonaws.com/influxdb/influxdb-0.10.0-1.x86_64.rpm
-influxdb_config_template: influxdb-0.10.0-1.conf.j2
+influxdb_version: https://s3.amazonaws.com/influxdb/influxdb-0.10.3-1.x86_64.rpm
+influxdb_config_template: influxdb-0.10.conf.j2
 ```
 
 ### Install via YUM (already downloaded and part of an existing repo)
@@ -26,7 +26,19 @@ influxdb_config_template: influxdb-0.9.6-1.conf.j2
 
 An ansible inventory needs created per the following :
 
+```
 [influxdb]
 influx1
 influx2
 influx3
+```
+
+### Using Vagrant
+
+```
+vagrant up influx1
+vagrant up influx2
+vagrant up influx3
+ansible-playbook -i ../.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory influxdb.yml
+```
+

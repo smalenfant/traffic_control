@@ -1,0 +1,5 @@
+---
+# roles/local-rpms/defaults/main.yml
+
+local_rpms: '/vagrant/.cache/rpms'
+

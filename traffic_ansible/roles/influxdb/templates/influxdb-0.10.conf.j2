@@ -4,8 +4,8 @@ reporting-disabled = true
 [meta]
   enabled = true
   dir = "{{ influxdb_dir }}/meta"
-  bind-address = "{{ influx_bind_ip|default(ansible_fqdn) }}:8088"
-  http-bind-address = "{{ influx_bind_ip|default(ansible_fqdn) }}:8091"
+  bind-address = "{{ ansible_fqdn }}:8088"
+  http-bind-address = "{{ ansible_fqdn }}:8091"
   https-enabled = false
   https-certificate = ""
   retention-autocreate = true
@@ -73,7 +73,7 @@ reporting-disabled = true
 
 [http]
   enabled = true
-  bind-address = "{{ influx_bind_ip|default(ansible_fqdn) }}:8086"
+  bind-address = "{{ ansible_fqdn }}:8086"
   auth-enabled = false
   log-enabled = true
   write-tracing = false

@@ -1,0 +1,4 @@
+---
+# roles/influxdb/cq/tasks/main.yml
+
+influx_cq: []

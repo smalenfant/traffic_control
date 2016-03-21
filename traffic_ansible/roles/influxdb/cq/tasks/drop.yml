@@ -1,0 +1,14 @@
+---
+# roles/influxdb/cq/tasks/main.yml
+
+- name: Drop the Continous Queries
+  command: /usr/bin/influx -host {{ ansible_fqdn }} -database {{ item.db }} -execute "DROP CONTINUOUS QUERY {{ item.name }} ON {{ item.db }}"
+  with_items: influx_cq
+  run_once: true
+  ignore_errors: true
+  register: results
+  changed_when: "(results.rc == 0)"
+  failed_when: "(results.rc !=0) and ((results.rc == 1) and 'continuous query not found' not in results.stderr)"
+  when: drop_cq is defined
+  tags:
+    - drop_cq

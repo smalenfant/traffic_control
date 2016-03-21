@@ -1,54 +1,72 @@
-replication: 3
+--- 
+# InfluxDB parameters
 
-influxdb_version: influxdb-0.10.0-1
+influxdb_version: /vagrant/.cache/rpms/influxdb-0.10.3-1.x86_64.rpm
 
-influx_dbs:
+urls:
+ - https://s3.amazonaws.com/influxdb/influxdb-0.10.3-1.x86_64.rpm
+
+
+influx_replication: 3
+influx_db:
   - cache_stats
   - deliveryservice_stats
-  - daily_stats
   - telegraf
 
-retention_policies:
-  - { name: daily, default: true, replication: "{{ replication }}", duration: 26h }
-  - { name: monthly, default: false, replication: "{{ replication }}", duration: 30d }
-  - { name: indefinite, default: false, replication: "{{ replication }}", duration: INF }
+influx_rp:
+  - { name: daily, default: true, replication: "{{ influx_replication }}", duration: 26h }
+  - { name: monthly, default: false, replication: "{{ influx_replication }}", duration: 30d }
+  - { name: indefinite, default: false, replication: "{{ influx_replication }}", duration: INF }
 
-continuous_queries:
+daily_stats_db:
+  - daily_stats
+
+daily_stats_rp:
+  - { name: indefinite, default: true, replication: "{{ influx_replication }}", duration: INF }
+
+influx_cq:
   # BEGIN cache_stats CQ
-  - name: bandwidth_1min 
+  - name: bandwidth_1min
     db: cache_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO cache_stats.monthly.\"bandwidth.1min\" FROM cache_stats.daily.bandwidth GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO cache_stats.monthly.\\\"bandwidth.1min\\\" FROM cache_stats.daily.bandwidth GROUP BY time(1m), * END"
   - name: connections_1min
     db: cache_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO cache_stats.monthly.\"connections.1min\" FROM \"cache_stats.daily.ats.proxy.process.http.current_client_connections\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO cache_stats.monthly.\\\"connections.1min\\\" FROM \\\"cache_stats.daily.ats.proxy.process.http.current_client_connections\\\" GROUP BY time(1m), * END"
   - name: bandwidth_cdn_1min
     db: cache_stats
-    select: 'BEGIN SELECT sum(value) AS value INTO cache_stats.monthly.\"bandwidth.cdn.1min\" FROM cache_stats.monthly.\"bandwidth.1min\" GROUP BY time(1m), cdn END'
+    select: "BEGIN SELECT sum(value) AS value INTO cache_stats.monthly.\\\"bandwidth.cdn.1min\\\" FROM cache_stats.monthly.\\\"bandwidth.1min\\\" GROUP BY time(1m), cdn END"
   - name: connections_cdn_1min
     db: cache_stats
-    select: 'BEGIN SELECT sum(value) AS value INTO cache_stats.monthly.\"connections.cdn.1min\" FROM cache_stats.monthly.\"connections.1min\" GROUP BY time(1m), cdn END'
+    select: "BEGIN SELECT sum(value) AS value INTO cache_stats.monthly.\\\"connections.cdn.1min\\\" FROM cache_stats.monthly.\\\"connections.1min\\\" GROUP BY time(1m), cdn END"
   # BEGIN deliveryservice_stats CQ
   - name: tps_2xx_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"tps_2xx.ds.1min\" FROM deliveryservice_stats.daily.tps_2xx WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_2xx.ds.1min\\\" FROM tps_2xx WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: tps_3xx_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"tps_3xx.ds.1min\" FROM deliveryservice_stats.daily.tps_3xx WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_3xx.ds.1min\\\" FROM tps_3xx WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: tps_4xx_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"tps_4xx.ds.1min\" FROM deliveryservice_stats.daily.tps_4xx WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_4xx.ds.1min\\\" FROM deliveryservice_stats.daily.tps_4xx WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: tps_5xx_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"tps_5xx.ds.1min\" FROM deliveryservice_stats.daily.tps_5xx WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_5xx.ds.1min\\\" FROM deliveryservice_stats.daily.tps_5xx WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: tps_total_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"tps_total.ds.1min\" FROM deliveryservice_stats.daily.tps_total WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_total.ds.1min\\\" FROM deliveryservice_stats.daily.tps_total WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: kbps_ds_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"kbps.ds.1min\" FROM deliveryservice_stats.daily.\"kbps\" WHERE cachegroup = \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"kbps.ds.1min\\\" FROM deliveryservice_stats.daily.kbps WHERE cachegroup = 'total' GROUP BY time(1m), * END"
   - name: kbps_cg_1min
     db: deliveryservice_stats
-    select: 'BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\"kbps.cg.1min\" FROM deliveryservice_stats.daily.kbps WHERE cachegroup != \"total\" GROUP BY time(1m), * END'
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"kbps.cg.1min\\\" FROM deliveryservice_stats.daily.kbps WHERE cachegroup != 'total' GROUP BY time(1m), * END"
   - name: max_kbps_ds_1day
     db: deliveryservice_stats
-    select: 'BEGIN SELECT max(value) AS value INTO deliveryservice_stats.indefinite.\"max.kbps.ds.1day\" FROM deliveryservice_stats.monthly.\"kbps.ds.1min\" GROUP BY time(1d), deliveryservice, cdn END'
+    select: "BEGIN SELECT max(value) AS value INTO deliveryservice_stats.indefinite.\\\"max.kbps.ds.1day\\\" FROM deliveryservice_stats.monthly.\\\"kbps.ds.1min\\\" GROUP BY time(1d), deliveryservice, cdn END"
+
+test_cq:
+  - name: tps_2xx_ds_1min
+    db: deliveryservice_stats
+    select: "BEGIN SELECT mean(value) AS value INTO deliveryservice_stats.monthly.\\\"tps_2xx.ds.1min\\\" FROM tps_2xx WHERE cachegroup = 'total' GROUP BY time(1m), * END"
+
+

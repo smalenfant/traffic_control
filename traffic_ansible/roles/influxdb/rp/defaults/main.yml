@@ -1,0 +1,4 @@
+---
+# roles/influxdb/rp/tasks/main.yml
+
+influx_rp: []

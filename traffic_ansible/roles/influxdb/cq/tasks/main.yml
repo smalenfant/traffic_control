@@ -1,0 +1,18 @@
+---
+# roles/influxdb/tasks/main.yml
+
+- include: drop.yml
+  when: drop_cq is defined 
+  tags: drop_cq
+
+- name: Setup the Continuous Queries
+  command: /usr/bin/influx -host {{ inventory_hostname }} -database {{ item.db }} -execute "CREATE CONTINUOUS QUERY {{ item.name }} ON {{ item.db }} {{ item.select }}"
+  with_items: 
+   - "{{ influx_cq }}"
+  run_once: true
+  ignore_errors: true
+  register: results
+  changed_when: "(results.rc == 0)"
+  failed_when: "(results.rc !=0) and ((results.rc == 1) and 'redirect' not in results.stderr)"
+  tags: cq
+

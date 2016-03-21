@@ -1,0 +1,11 @@
+---
+### roles/influxdb/db/tasks/main.yml
+
+# TODO: There is no way to tell if Database already created. Response to Create DBs always comes back with "changed"
+
+- name: Create DBs
+  command: /usr/bin/influx -host {{ ansible_fqdn }} -execute "CREATE DATABASE IF NOT EXISTS {{ item }}"
+  ignore_errors: true
+  run_once: true
+  with_items: 
+   - "{{ influx_db }}"

@@ -1,7 +1,2 @@
 - name: Restart InfluxDB
   service: name=influxdb state=restarted
-  notify:
-   - Ensure InfluxDB is ready
-
-- name: Ensure InfluxDB is ready
-  wait_for: delay=3 host={{ influx_bind_ip|default(ansible_fqdn) }} port=8086 state=started timeout=5

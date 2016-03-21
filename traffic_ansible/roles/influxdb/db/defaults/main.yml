@@ -1,0 +1,4 @@
+---
+# roles/influxdb/db/defaults/main.yml
+
+influx_db: []
