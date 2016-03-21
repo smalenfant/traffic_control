@@ -88,10 +88,8 @@ sub gen_crconfig_json {
 			push @profile_caches, @{$r};
 		}
 		else {
-			if ( $cachetype eq 'CCR' ) {
-				$cachetype = 'Traffic Router';
-			}
-			my $e = Mojo::Exception->throw( "No $cachetype profiles found for CDN: " . $cdn_name );
+			my $t = ( $cachetype eq 'CCR' ) ? 'Traffic Router' : $cachetype;
+			my $e = Mojo::Exception->throw( "No $t profiles found for CDN: " . $cdn_name );
 		}
 	}
 	my %condition = (
@@ -735,8 +733,8 @@ sub stringify_ds {
 			$string .= "|responseHeader:$header:" . $ds->{'responseHeaders'}->{$header};
 		}
 	}
-	if ( defined( $ds->{'initial_dispersion'} ) ) {
-		$string .= "|initial_dispersion: " . $ds->{'initial_dispersion'};
+	if ( defined( $ds->{'dispersion'} ) ) {
+		$string .= "|dispersion: limit=" . $ds->{'dispersion'}->{'limit'} . ", shuffled=" . $ds->{'dispersion'}->{'shuffled'};
 	}
 	if ( defined( $ds->{'regionalGeoBlocking'} ) ) {
 		$string .= "|Regional_Geoblocking:" . $ds->{'regionalGeoBlocking'};

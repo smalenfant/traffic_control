@@ -23,13 +23,16 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.commons.pool.ObjectPool;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.IntegrationTest;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationService;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -40,17 +43,15 @@ import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager;
 import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
 import com.comcast.cdn.traffic_control.traffic_router.core.hash.MD5HashFunctionPoolableObjectFactory;
 import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationRegistry;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.Geolocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.GeolocationService;
 import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNode;
 import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
 import com.comcast.cdn.traffic_control.traffic_router.core.request.Request;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.DnsNameGenerator;
 import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
 import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultType;
 import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
 import com.google.common.net.InetAddresses;
 
+@Category(IntegrationTest.class)
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(TrafficRouter.class)
 public class DnsRoutePerformanceTest {

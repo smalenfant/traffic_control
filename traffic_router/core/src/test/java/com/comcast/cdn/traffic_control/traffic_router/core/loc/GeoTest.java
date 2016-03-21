@@ -16,26 +16,25 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.loc;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.util.IntegrationTest;
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.springframework.context.ApplicationContext;
 
-import static org.junit.Assert.assertNotNull;
+import org.junit.Assert;
 
 import com.comcast.cdn.traffic_control.traffic_router.core.TestBase;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.Geolocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.GeolocationDatabaseUpdater;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.MaxmindGeolocationService;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
 
+@Category(IntegrationTest.class)
 public class GeoTest {
 	private static final Logger LOGGER = Logger.getLogger(GeoTest.class);
 
 	private GeolocationDatabaseUpdater geolocationDatabaseUpdater;
 	private MaxmindGeolocationService geolocationService;
-	private NetworkUpdater networkUpdater;
 	private static ApplicationContext context;
 
 	@BeforeClass
@@ -50,18 +49,13 @@ public class GeoTest {
 	@Before
 	public void setUp() throws Exception {
 		geolocationDatabaseUpdater = (GeolocationDatabaseUpdater) context.getBean("geolocationDatabaseUpdater");
-		networkUpdater = (NetworkUpdater) context.getBean("networkUpdater");
 		geolocationService = (MaxmindGeolocationService) context.getBean("GeolocationService");
-
-		while (!networkUpdater.isLoaded()) {
-			LOGGER.info("Waiting for a valid location database before proceeding");
-			Thread.sleep(1000);
-		}
 
 		while (!geolocationDatabaseUpdater.isLoaded()) {
 			LOGGER.info("Waiting for a valid Maxmind database before proceeding");
 			Thread.sleep(1000);
 		}
+
 	}
 
 	@Test
@@ -72,7 +66,7 @@ public class GeoTest {
 			};
 			for(int i = 0; i < testips.length; i++) {
 				Geolocation location = geolocationService.location(testips[i][0]);
-				assertNotNull(location);
+				Assert.assertNotNull(location);
 				String loc = location.toString();
 				LOGGER.info(String.format("result for ip=%s: %s\n",testips[i], loc));
 			}

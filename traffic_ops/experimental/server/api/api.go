@@ -27,6 +27,7 @@ const (
 	POST
 	PUT
 	DELETE
+	OPTIONS
 )
 
 const API_PATH = "/api/2.0/"
@@ -41,6 +42,8 @@ func (m ApiMethod) String() string {
 		return "PUT"
 	case DELETE:
 		return "DELETE"
+	case OPTIONS:
+		return "OPTIONS"
 	}
 	return "INVALID"
 }
@@ -81,6 +84,7 @@ func ApiHandlers() map[string]ApiHandlerFuncMap {
 		"cachegroup_parameter":                ApiHandlerFuncMap{GET: emptyWrap(getCachegroupParameters), POST: bodyWrap(postCachegroupParameter)},
 		"cachegroup_parameter/{id}":           ApiHandlerFuncMap{GET: idWrap(getCachegroupParameterById), PUT: idBodyWrap(putCachegroupParameter), DELETE: idWrap(delCachegroupParameter)},
 		"deliveryservice":                     ApiHandlerFuncMap{GET: emptyWrap(getDeliveryservices), POST: bodyWrap(postDeliveryservice)},
+		"deliveryservice/{id}":                ApiHandlerFuncMap{GET: idWrap(getDeliveryserviceById), PUT: idBodyWrap(putDeliveryservice), DELETE: idWrap(delDeliveryservice)},
 		"deliveryserviceRegex/{id}":           ApiHandlerFuncMap{GET: idWrap(getDeliveryserviceRegexById), PUT: idBodyWrap(putDeliveryserviceRegex), DELETE: idWrap(delDeliveryserviceRegex)},
 		"deliveryservice_regex":               ApiHandlerFuncMap{GET: emptyWrap(getDeliveryserviceRegexs), POST: bodyWrap(postDeliveryserviceRegex)},
 		"deliveryservice_regex/{id}":          ApiHandlerFuncMap{GET: idWrap(getDeliveryserviceRegexById), PUT: idBodyWrap(putDeliveryserviceRegex), DELETE: idWrap(delDeliveryserviceRegex)},

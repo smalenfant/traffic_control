@@ -91,6 +91,9 @@ sub genfiles {
 			$text = &take_and_bake( $self, $id, $org_name );
 		}
 	}
+	if ($text =~ /^Error/) {
+		$self->internal_server_error( { Error => $text } );
+	}
 
 	if ( $file ne "all" ) {
 		$self->res->headers->content_type("application/download");
@@ -691,26 +694,54 @@ sub generic_config {
 	return $text;
 }
 
-sub volume_dot_config {
-	my $self = shift;
-	my $id   = shift;
-	my $file = shift;
+sub get_num_volumes {
+    my $data = shift;
 
-	my $server = $self->server_data($id);
-	my $data   = $self->param_data( $server, "storage.config" );
-	my $text   = $self->header_comment( $server->host_name );
-	if ( defined( $data->{RAM_Drive_Prefix} ) ) {
-
-		# TODO JvD: More vols??
-		$text .= "# 12M NOTE: This is running with forced volumes - the size is irrelevant\n";
-		$text .= "volume=" . $data->{RAM_Volume} . " scheme=http size=1%\n";
-		$text .= "volume=" . $data->{Disk_Volume} . " scheme=http size=1%\n";
-	}
-	else {
-		$text .= "volume=1 scheme=http size=100%\n";
-	}
-	return $text;
+    my $num            = 0;
+    my @drive_prefixes = qw( Drive_Prefix SSD_Drive_Prefix RAM_Drive_Prefix);
+    foreach my $pre (@drive_prefixes) {
+        if ( exists $data->{$pre} ) {
+            $num++;
+        }
+    }
+    return $num;
 }
+
+sub volume_dot_config_volume_text {
+    my $volume      = shift;
+    my $num_volumes = shift;
+    my $size        = int( 100 / $num_volumes );
+    return "volume=$volume scheme=http size=$size%\n";
+}
+
+sub volume_dot_config {
+    my $self = shift;
+    my $id   = shift;
+    my $file = shift;
+
+    my $server = $self->server_data($id);
+    my $data   = $self->param_data( $server, "storage.config" );
+    my $text   = $self->header_comment( $server->host_name );
+
+    my $num_volumes = get_num_volumes($data);
+
+    $text .=
+"# 12M NOTE: This is running with forced volumes - the size is irrelevant\n";
+    if ( defined( $data->{Drive_Prefix} ) ) {
+        $text .=
+          volume_dot_config_volume_text( $data->{Disk_Volume}, $num_volumes );
+    }
+    if ( defined( $data->{RAM_Drive_Prefix} ) ) {
+        $text .=
+          volume_dot_config_volume_text( $data->{RAM_Volume}, $num_volumes );
+    }
+    if ( defined( $data->{SSD_Drive_Prefix} ) ) {
+        $text .=
+          volume_dot_config_volume_text( $data->{SSD_Volume}, $num_volumes );
+    }
+    return $text;
+}
+
 
 sub hosting_dot_config {
 	my $self = shift;
@@ -749,38 +780,54 @@ sub hosting_dot_config {
 	return $text;
 }
 
+sub storage_dot_config_volume_text {
+    my $prefix               = shift;
+    my $letters              = shift;
+    my $volume               = shift;
+    my $has_multiple_volumes = shift;
+
+    my $text = "";
+    my @postfix = split( /,/, $letters );
+    foreach my $l ( sort @postfix ) {
+        $text .= $prefix . $l;
+        if ($has_multiple_volumes) {
+            $text .= " volume=" . $volume;
+        }
+        $text .= "\n";
+    }
+    return $text;
+}
+
 sub storage_dot_config {
-	my $self = shift;
-	my $id   = shift;
-	my $file = shift;
+    my $self = shift;
+    my $id   = shift;
+    my $file = shift;
 
-	my $server = $self->server_data($id);
-	my $text   = $self->header_comment( $server->host_name );
-	my $data   = $self->param_data( $server, $file );
+    my $server = $self->server_data($id);
+    my $text   = $self->header_comment( $server->host_name );
+    my $data   = $self->param_data( $server, $file );
 
-	if ( defined( $data->{RAM_Drive_Prefix} ) ) {
-		my $drive_prefix = $data->{RAM_Drive_Prefix};
-		my @drive_postfix = split( /,/, $data->{RAM_Drive_Letters} );
-		foreach my $l ( sort @drive_postfix ) {
-			$text .= $drive_prefix . $l . " volume=" . $data->{RAM_Volume} . "\n";
-		}
-		$drive_prefix = $data->{Drive_Prefix};
-		@drive_postfix = split( /,/, $data->{Drive_Letters} );
-		foreach my $l ( sort @drive_postfix ) {
-			$text .= $drive_prefix . $l . " volume=" . $data->{Disk_Volume} . "\n";
-		}
-	}
-	else {
+    my $has_multiple_volumes = get_num_volumes($data) > 1;
 
-		# there is no volume patch, so no assignment in storaage.config
-		my $drive_prefix = $data->{Drive_Prefix};
-		my @drive_postfix = split( /,/, $data->{Drive_Letters} );
-		foreach my $l ( sort @drive_postfix ) {
-			$text .= $drive_prefix . $l . "\n";
-		}
-	}
-
-	return $text;
+    if ( defined( $data->{Drive_Prefix} ) ) {
+        $text .= storage_dot_config_volume_text(
+            $data->{Drive_Prefix}, $data->{Drive_Letters},
+            $data->{Disk_Volume},  $has_multiple_volumes
+        );
+    }
+    if ( defined( $data->{RAM_Drive_Prefix} ) ) {
+        $text .= storage_dot_config_volume_text(
+            $data->{RAM_Drive_Prefix}, $data->{RAM_Drive_Letters},
+            $data->{RAM_Volume},       $has_multiple_volumes
+        );
+    }
+    if ( defined( $data->{SSD_Drive_Prefix} ) ) {
+        $text .= storage_dot_config_volume_text(
+            $data->{SSD_Drive_Prefix}, $data->{SSD_Drive_Letters},
+            $data->{SSD_Volume},       $has_multiple_volumes
+        );
+    }
+    return $text;
 }
 
 sub ats_dot_rules {
@@ -1002,16 +1049,16 @@ sub parent_dot_config {
 				$text .= "dest_domain=$org_fqdn parent=$os $algorithm go_direct=true\n";
 			}
 			elsif ($multi_site_origin) {
-				$text .= "dest_domain=$org_fqdn parent=\"";
+				$text .= "dest_domain=$org_fqdn \"";
 				my $pinfo = $self->parent_data($server);
 
-				#print Dumper($pinfo);
 				my @parent_info;
 				foreach my $parent ( @{ $pinfo->{$org_fqdn} } ) {
 					push @parent_info, format_parent_info($parent);
 				}
 
-				$text .= "\" round_robin=consistent_hash go_direct=false parent_is_proxy=false\n";
+				my $parents = 'parent="' . join( '', @parent_info ) . '"';
+				$text .= "$parents round_robin=consistent_hash go_direct=false parent_is_proxy=false\n";
 			}
 		}
 
@@ -1028,6 +1075,7 @@ sub parent_dot_config {
 
 		foreach my $remap ( @{ $data->{dslist} } ) {
 			my $org = $remap->{org};
+			next if !defined $org || $org eq "";
 			next if $done{$org};
 			if ( $remap->{type} eq "HTTP_NO_CACHE" || $remap->{type} eq "HTTP_LIVE" || $remap->{type} eq "DNS_LIVE" ) {
 				my $org_fqdn = $remap->{org};
@@ -1304,6 +1352,7 @@ sub to_ext_dot_config {
 		eval "use $package;";
 
 		# And call it - the below calls the subroutine in the var $subroutine.
+		no strict 'refs';
 		$text .= $subroutine->( $self, $id, $file );
 
 		# $text .= &{ \&{$subroutine} }( $self, $id, $file );

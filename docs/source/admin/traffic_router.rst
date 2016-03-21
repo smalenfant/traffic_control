@@ -55,7 +55,11 @@ The following are requirements to ensure an accurate set up:
 Configuring Traffic Router
 ==========================
 
-By default, Traffic Router installs all configuration files under ``/opt/traffic_router/conf``. For the most part, the configuration files and parameters that follow are used to get Traffic Router online and communicating with various Traffic Control components. Once Traffic Router is successfully communicating with Traffic Control, configuration is mostly performed in Traffic Ops, and is distributed throughout Traffic Control via the CRConfig snapshot process. See :ref:`rl-snapshot-crconfig` for more information. Please see the parameter documentation for Traffic Router in the Using Traffic Ops guide documented under :ref:`rl-ccr-profile` for parameters that influence the behavior of Traffic Router via the CRConfig.
+.. Note:: Starting with Traffic Router 1.5, many of the configuration files under ``/opt/traffic_router/conf`` are only needed to override the default configuration values for Traffic Router. Most of the given default values will work well for any CDN. Critical values that must be changed are hostnames and credentials for communicating with other Traffic Control components such as Traffic Ops and Traffic Monitor.
+
+.. Note:: Pre-existing installations having configuration files in ``/opt/traffic_router/conf`` will still be used and honored for Traffic Router 1.5 and onward.
+
+For the most part, the configuration files and parameters that follow are used to get Traffic Router online and communicating with various Traffic Control components. Once Traffic Router is successfully communicating with Traffic Control, configuration is mostly performed in Traffic Ops, and is distributed throughout Traffic Control via the CRConfig snapshot process. See :ref:`rl-snapshot-crconfig` for more information. Please see the parameter documentation for Traffic Router in the Using Traffic Ops guide documented under :ref:`rl-ccr-profile` for parameters that influence the behavior of Traffic Router via the CRConfig.
 
 .. _rl-tr-config-files:
 
@@ -313,3 +317,30 @@ Sample Message
 |      |                                                                     | NXDOMAIN (the domain/name requested does not exist) |
 +------+---------------------------------------------------------------------+-----------------------------------------------------+
 
+.. _rl-tr-ngb:
+
+GeoLimit Failure Redirect feature
+======
+
+Overview
+--------
+This feature is also called 'National GeoBlock' feature which is short for 'NGB' feature. In this section, the acronym 'NGB' will be used for this feature.
+
+In the past, if the Geolimit check fails (for example, the client ip is not in the 'US' region but the geolimit is set to 'CZF + US'), the router will return 503 response; but with this feature, when the check fails, it will return 302 if the redirect url is set in the delivery service.
+
+The Geolimit check failure has such scenarios:
+1) When the GeoLimit is set to 'CZF + only', if the client ip is not in the the CZ file, the check fails
+2) When the GeoLimit is set to any region, like 'CZF + US', if the client ip is not in such region, and the client ip is not in the CZ file, the check fails
+
+
+Configuration
+--------
+To enable the NGB feature, the DS must be configured with the proper redirect url. And the setting lays at 'Delivery Services'->Edit->'GeoLimit Redirect URL'. If no url is put in this field, the feature is disabled.
+
+The url has 3 kinds of formats, which have different meanings:
+1. URL without domain
+   If no domain is in the url (like 'vod/dance.mp4'), the router will try to find a proper cache server within the delivery service and return the redirect url with the format like 'http://<cache server name>.<delivery service's FQDN>/<configured relative path>'
+2. URL with domain that matches with the delivery service
+   The URL has domain and the domain matches with the delivery service. For this URL, the router will also try to find a proper cache server within the delivery service and return the same format url as point 1.
+3. URL with domain that doesn't match with the delivery service
+   The URL has domain but the domain doesn't match with the delivery service. For this URL, the router will return the configured url directly to the client.

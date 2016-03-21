@@ -32,6 +32,10 @@ import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 
+import java.io.File;
+
+import static org.mockito.Matchers.anyString;
+
 @PrepareForTest({ConfigHandler.class, CacheWatcher.class, SSLContext.class})
 @RunWith(PowerMockRunner.class)
 public class TestHomePage {
@@ -46,6 +50,7 @@ public class TestHomePage {
 		MonitorConfig monitorConfig = mock(MonitorConfig.class);
 		when(monitorConfig.getHealthPollingInterval()).thenReturn(10 * 1000);
 		when(monitorConfig.getTmFrequency()).thenReturn(10 * 1000L);
+		when(monitorConfig.getPeerPollingInterval()).thenReturn(10 * 1000L);
 		when(monitorConfig.getHeathUrl()).thenReturn("http://example.com/healthParams");
 		when(monitorConfig.getCrConfigUrl()).thenReturn("http://example.com/crConfig");
 		when(monitorConfig.getPeerThreadPool()).thenReturn(1);
@@ -55,6 +60,7 @@ public class TestHomePage {
 
 		when(configHandler.getConfig()).thenReturn(monitorConfig);
 		when(configHandler.configFileExists()).thenReturn(true);
+		when(configHandler.getDbFile(anyString())).thenReturn(mock(File.class));
 
 		mockStatic(ConfigHandler.class);
 		when(ConfigHandler.getInstance()).thenReturn(configHandler);

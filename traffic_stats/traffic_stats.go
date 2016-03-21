@@ -61,6 +61,7 @@ type StartupConfig struct {
 	ToURL                       string                  `json:"toUrl"`
 	InfluxUser                  string                  `json:"influxUser"`
 	InfluxPassword              string                  `json:"influxPassword"`
+	InfluxProtocol              string                  `json:"influxProtocol"`
 	PollingInterval             int                     `json:"pollingInterval"`
 	DailySummaryPollingInterval int                     `json:"dailySummaryPollingInterval"`
 	PublishingInterval          int                     `json:"publishingInterval"`
@@ -77,8 +78,8 @@ type StartupConfig struct {
 // RunningConfig is used to store runtime configuration for Traffic Stats.  This includes information
 // about caches, cachegroups, health urls, and online InfluxDB servers
 type RunningConfig struct {
-	HealthUrls      map[string]map[string]string // the 1st map key is CDN_name, the second is DsStats or CacheStats
-	CacheGroupMap   map[string]string            // map hostName to cacheGroup
+	HealthUrls      map[string]map[string]string  // the 1st map key is CDN_name, the second is DsStats or CacheStats
+	CacheMap        map[string]traffic_ops.Server // map hostName to cache
 	InfluxDBs       []*InfluxDBProps
 	LastSummaryTime time.Time
 }
@@ -160,7 +161,7 @@ func main() {
 			for cdnName, urls := range runningConfig.HealthUrls {
 				for _, url := range urls {
 					log.Debug(cdnName, " -> ", url)
-					go calcMetrics(cdnName, url, runningConfig.CacheGroupMap, config, runningConfig)
+					go calcMetrics(cdnName, url, runningConfig.CacheMap, config, runningConfig)
 				}
 			}
 		case now := <-tickers.DailySummary:
@@ -227,6 +228,9 @@ func loadStartupConfig(configFile string, oldConfig StartupConfig) (StartupConfi
 	}
 	if config.MaxPublishSize == 0 {
 		config.MaxPublishSize = defaultMaxPublishSize
+	}
+	if config.InfluxProtocol == "" {
+		config.InfluxProtocol = "http"
 	}
 
 	logger, err := log.LoggerFromConfigAsFile(config.SeelogConfig)
@@ -329,7 +333,9 @@ func calcDailySummary(now time.Time, config StartupConfig, runningConfig Running
 			statsSummary.StatName = "daily_bytesserved"
 			statsSummary.StatValue = strconv.FormatFloat(bytesServedTb, 'f', 2, 64)
 			go writeSummaryStats(config, statsSummary)
-
+			fields = map[string]interface{}{
+				"value": bytesServedTb,
+			}
 			pt, err = influx.NewPoint(
 				statsSummary.StatName,
 				tags,
@@ -396,9 +402,9 @@ func getToData(config StartupConfig, init bool, configChan chan RunningConfig) {
 		return
 	}
 
-	runningConfig.CacheGroupMap = make(map[string]string)
+	runningConfig.CacheMap = make(map[string]traffic_ops.Server)
 	for _, server := range servers {
-		runningConfig.CacheGroupMap[server.HostName] = server.Location
+		runningConfig.CacheMap[server.HostName] = server
 		if server.Type == "INFLUXDB" && server.Status == "ONLINE" {
 			fqdn := server.HostName + "." + server.DomainName
 			port, err := strconv.ParseInt(server.TcpPort, 10, 32)
@@ -470,7 +476,7 @@ func getToData(config StartupConfig, init bool, configChan chan RunningConfig) {
 	configChan <- runningConfig
 }
 
-func calcMetrics(cdnName string, url string, cacheGroupMap map[string]string, config StartupConfig, runningConfig RunningConfig) {
+func calcMetrics(cdnName string, url string, cacheMap map[string]traffic_ops.Server, config StartupConfig, runningConfig RunningConfig) {
 	sampleTime := int64(time.Now().Unix())
 	// get the data from trafficMonitor
 	trafMonData, err := getURL(url)
@@ -480,9 +486,11 @@ func calcMetrics(cdnName string, url string, cacheGroupMap map[string]string, co
 	}
 
 	if strings.Contains(url, "CacheStats") {
-		err = calcCacheValues(trafMonData, cdnName, sampleTime, cacheGroupMap, config)
+		err = calcCacheValues(trafMonData, cdnName, sampleTime, cacheMap, config)
+		errHndlr(err, ERROR)
 	} else if strings.Contains(url, "DsStats") {
 		err = calcDsValues(trafMonData, cdnName, sampleTime, config)
+		errHndlr(err, ERROR)
 	} else {
 		log.Warn("Don't know what to do with ", url)
 	}
@@ -533,7 +541,9 @@ func calcDsValues(rascalData []byte, cdnName string, sampleTime int64, config St
 
 	var jData DsStatsJSON
 	err := json.Unmarshal(rascalData, &jData)
-	errHndlr(err, ERROR)
+	if err != nil {
+		return fmt.Errorf("could not unmarshall deliveryservice stats JSON - %v", err)
+	}
 
 	statCount := 0
 	bps, _ := influx.NewBatchPoints(influx.BatchPointsConfig{
@@ -621,7 +631,7 @@ func calcDsValues(rascalData []byte, cdnName string, sampleTime int64, config St
 }
 */
 
-func calcCacheValues(trafmonData []byte, cdnName string, sampleTime int64, cacheGroupMap map[string]string, config StartupConfig) error {
+func calcCacheValues(trafmonData []byte, cdnName string, sampleTime int64, cacheMap map[string]traffic_ops.Server, config StartupConfig) error {
 
 	type CacheStatsJSON struct {
 		Pp     string `json:"pp"`
@@ -635,7 +645,9 @@ func calcCacheValues(trafmonData []byte, cdnName string, sampleTime int64, cache
 	}
 	var jData CacheStatsJSON
 	err := json.Unmarshal(trafmonData, &jData)
-	errHndlr(err, ERROR)
+	if err != nil {
+		return fmt.Errorf("could not unmarshall cache stats JSON - %v", err)
+	}
 
 	statCount := 0
 	bps, err := influx.NewBatchPoints(influx.BatchPointsConfig{
@@ -647,6 +659,8 @@ func calcCacheValues(trafmonData []byte, cdnName string, sampleTime int64, cache
 		errHndlr(err, ERROR)
 	}
 	for cacheName, cacheData := range jData.Caches {
+		cache := cacheMap[cacheName]
+
 		for statName, statData := range cacheData {
 			dataKey := statName
 			dataKey = strings.Replace(dataKey, ".bandwidth", ".kbps", 1)
@@ -667,9 +681,10 @@ func calcCacheValues(trafmonData []byte, cdnName string, sampleTime int64, cache
 				statFloatValue = 0.00
 			}
 			tags := map[string]string{
-				"cachegroup": cacheGroupMap[cacheName],
+				"cachegroup": cache.Location,
 				"hostname":   cacheName,
 				"cdn":        cdnName,
+				"type":       cache.Type,
 			}
 
 			fields := map[string]interface{}{
@@ -711,18 +726,32 @@ func influxConnect(config StartupConfig, runningConfig RunningConfig) (influx.Cl
 	var hosts []*InfluxDBProps
 	for _, InfluxHost := range runningConfig.InfluxDBs {
 		if InfluxHost.InfluxClient == nil {
-			conf := influx.HTTPConfig{
-				Addr:     fmt.Sprintf("http://%s:%d", InfluxHost.Fqdn, InfluxHost.Port),
-				Username: config.InfluxUser,
-				Password: config.InfluxPassword,
+			if config.InfluxProtocol == "udp" {
+				conf := influx.UDPConfig{
+					Addr: fmt.Sprintf("%s:%d", InfluxHost.Fqdn, InfluxHost.Port),
+				}
+				con, err := influx.NewUDPClient(conf)
+				if err != nil {
+					errHndlr(err, ERROR)
+					continue
+				}
+				InfluxHost.InfluxClient = con
+
+			} else {
+				conf := influx.HTTPConfig{
+					Addr:     fmt.Sprintf("%s://%s:%d", config.InfluxProtocol, InfluxHost.Fqdn, InfluxHost.Port),
+					Username: config.InfluxUser,
+					Password: config.InfluxPassword,
+				}
+				con, err := influx.NewHTTPClient(conf)
+				if err != nil {
+					errHndlr(err, ERROR)
+					continue
+				}
+				InfluxHost.InfluxClient = con
 			}
-			con, err := influx.NewHTTPClient(conf)
-			if err != nil {
-				errHndlr(err, ERROR)
-				continue
-			}
-			InfluxHost.InfluxClient = con
 		}
+
 		hosts = append(hosts, InfluxHost)
 	}
 
@@ -731,17 +760,19 @@ func influxConnect(config StartupConfig, runningConfig RunningConfig) (influx.Cl
 		host := hosts[n]
 		hosts = append(hosts[:n], hosts[n+1:]...)
 		con := host.InfluxClient
-		q := influx.Query{
-			Command:  "show databases",
-			Database: "",
+		//client currently does not support udp queries
+		if config.InfluxProtocol != "udp" {
+			q := influx.Query{
+				Command:  "show databases",
+				Database: "",
+			}
+			_, err := con.Query(q)
+			if err != nil {
+				errHndlr(err, ERROR)
+				host.InfluxClient = nil
+				continue
+			}
 		}
-		_, err := con.Query(q)
-		if err != nil {
-			errHndlr(err, ERROR)
-			host.InfluxClient = nil
-			continue
-		}
-
 		return con, nil
 	}
 

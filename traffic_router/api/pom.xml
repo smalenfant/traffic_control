@@ -20,13 +20,11 @@
 	<parent>
 		<groupId>com.comcast.cdn.traffic_control.traffic_router</groupId>
 		<artifactId>traffic_router</artifactId>
-		<version>${env.TRAFFIC_CONTROL_VERSION}</version>
+		<version>1.5.0</version>
 	</parent>
 
 	<artifactId>traffic_router_api</artifactId>
-	<version>1.0.0</version>
 	<packaging>war</packaging>
-	<name>traffic_router_api</name>
 
 	<properties>
 		<deploy.dir>/opt/traffic_router</deploy.dir>
@@ -50,28 +48,6 @@
 	<build>
 		<finalName>ROOT</finalName>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-enforcer-plugin</artifactId>
-				<version>1.4.1</version>
-				<executions>
-					<execution>
-						<phase>validate</phase>
-						<id>enforce-environment-variable-is-set</id>
-						<goals>
-							<goal>enforce</goal>
-						</goals>
-						<configuration>
-							<rules>
-								<requireEnvironmentVariable>
-									<variableName>TRAFFIC_CONTROL_VERSION</variableName>
-								</requireEnvironmentVariable>
-							</rules>
-							<fail>true</fail>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 			<plugin>
 				<artifactId>maven-pmd-plugin</artifactId>
 				<version>2.5</version>
@@ -105,13 +81,6 @@
 	</build>
 
 	<dependencies>
-
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-context</artifactId>
-			<version>3.0.5.RELEASE</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
@@ -176,15 +145,9 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.codehaus.jackson</groupId>
-			<artifactId>jackson-mapper-asl</artifactId>
-			<version>1.8.2</version>
-		</dependency>
-
-		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-webmvc</artifactId>
-			<version>3.0.5.RELEASE</version>
+			<version>${spring.version}</version>
 		</dependency>
 
 		<dependency>
@@ -230,6 +193,11 @@
 			<groupId>com.ning</groupId>
 			<artifactId>async-http-client</artifactId>
 			<version>1.7.24</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.4.3</version>
 		</dependency>
 	</dependencies>
 </project>
