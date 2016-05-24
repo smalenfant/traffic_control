@@ -26,6 +26,7 @@ use NetAddr::IP;
 use UI::DeliveryService;
 use JSON;
 use API::DeliveryService::KeysUrlSig qw(URL_SIG_KEYS_BUCKET);
+use URI;
 
 my $dispatch_table ||= {
 	"logs_xml.config"         => sub { logs_xml_dot_config(@_) },
@@ -261,7 +262,6 @@ sub ds_data {
 
 					#add the first with http
 					$dsinfo->{dslist}->[$j]->{"remap_line"}->{$map_from} = $map_to;
-
 					#add the second with https
 					my $map_from2 = "https://" . $host_re . "/";
 					$dsinfo->{dslist}->[$j]->{"remap_line2"}->{$map_from2} = $map_to;
@@ -788,9 +788,9 @@ sub hosting_dot_config {
 	my $file = shift;
 	my $data = shift;
 
-	my $server       = $self->server_data($id);
-	my $storage_data = $self->param_data( $server, "storage.config" );
-	my $text         = $self->header_comment( $server->host_name );
+	my $server = $self->server_data($id);
+	my $storage_data   = $self->param_data( $server, "storage.config" );
+	my $text   = $self->header_comment( $server->host_name );
 	if ( !defined($data) ) {
 		$data = $self->ds_data($server);
 	}
@@ -818,7 +818,7 @@ sub hosting_dot_config {
 			}
 		}
 	}
-	my $disk_volume = 1;    # note this will actually be the RAM (RAM_Drive_Prefix) volume if there is no Drive_Prefix parameter.
+	my $disk_volume = 1; # note this will actually be the RAM (RAM_Drive_Prefix) volume if there is no Drive_Prefix parameter.
 	$text .= "hostname=*   volume=" . $disk_volume . "\n";
 
 	return $text;
@@ -1076,22 +1076,21 @@ sub parent_dot_config {
 			my $os                = $ds->{origin_shield};
 			my $multi_site_origin = defined( $ds->{multi_site_origin} ) ? $ds->{multi_site_origin} : 0;
 
-			my $org_fqdn = $ds->{org};
-			$org_fqdn =~ s/https?:\/\///;
+			my $org_uri = URI->new($ds->{org});
 			if ( defined($os) ) {
 				my $pselect_alg = $self->profile_param_value( $server->profile->id, 'parent.config', 'algorithm', undef );
 				my $algorithm = "";
 				if ( defined($pselect_alg) ) {
 					$algorithm = "round_robin=$pselect_alg";
 				}
-				$text .= "dest_domain=$org_fqdn parent=$os $algorithm go_direct=true\n";
+				$text .= "dest_domain=" . $org_uri->host . " port=" . $org_uri->port . " parent=$os $algorithm go_direct=true\n";
 			}
 			elsif ($multi_site_origin) {
-				$text .= "dest_domain=$org_fqdn ";
+				$text .= "dest_domain=" . $org_uri->host . " port=" . $org_uri->port . " ";
 				my $pinfo = $self->parent_data($server);
 
 				my @parent_info;
-				foreach my $parent ( @{ $pinfo->{$org_fqdn} } ) {
+				foreach my $parent ( @{ $pinfo->{$org_uri->host} } ) {
 					push @parent_info, format_parent_info($parent);
 				}
 				my %seen;
@@ -1117,14 +1116,15 @@ sub parent_dot_config {
 			my $org = $remap->{org};
 			next if !defined $org || $org eq "";
 			next if $done{$org};
+			my $org_uri = URI->new($org);
 			if ( $remap->{type} eq "HTTP_NO_CACHE" || $remap->{type} eq "HTTP_LIVE" || $remap->{type} eq "DNS_LIVE" ) {
-				my $org_fqdn = $remap->{org};
-				$org_fqdn =~ s/https?:\/\///;
-				$text .= "dest_domain=" . $org_fqdn . " go_direct=true\n";
+				# my $org_fqdn = $remap->{org};
+				# $org_fqdn =~ s/https?:\/\///;
+				$text .= "dest_domain=" . $org_uri->host . " port=" . $org_uri->port . " go_direct=true\n";
 			}
 			else {
-				my $org_fqdn = $remap->{org};
-				$org_fqdn =~ s/https?:\/\///;
+				#my $org_fqdn = $remap->{org};
+				#$org_fqdn =~ s/https?:\/\///;
 
 				my $qstring = $self->profile_param_value( $server->profile->id, 'parent.config', 'qstring', undef );
 				$qstring = ( defined $qstring ) ? "qstring=$qstring" : '';
@@ -1151,7 +1151,8 @@ sub parent_dot_config {
 				}
 				my $round_robin = 'round_robin=consistent_hash';
 				my $go_direct   = 'go_direct=false';
-				$text .= "dest_domain=$org_fqdn $parents $secparents $round_robin $go_direct $qstring\n";
+				#$text .= "dest_domain=$org_fqdn $parents $secparents $round_robin $go_direct $qstring\n";
+				$text .= "dest_domain=" . $org_uri->host . " port=" . $org_uri->port . " $parents $secparents $round_robin $go_direct $qstring\n";
 			}
 			$done{$org} = 1;
 		}
@@ -1229,6 +1230,7 @@ sub regex_revalidate_dot_config {
 	}
 
 	my %regex_time;
+	##DN- even though we made these params, the front-end is still hard-coded to validate ttl between 48 - 672...
 	my $max_hours =
 		$self->db->resultset('Parameter')->search( { name => "ttl_max_hours" }, { config_file => "regex_revalidate.config" } )->get_column('value')->first;
 	my $min_hours =
@@ -1243,11 +1245,8 @@ sub regex_revalidate_dot_config {
 		my $ttl;
 		if ( $row->keyword eq "PURGE" && ( defined($parameters) && $parameters =~ /TTL:(\d+)h/ ) ) {
 			$ttl = $1;
-			if ( $ttl < $min_hours ) {
+			if ( $ttl > $min_hours || $ttl < $max_hours ) {
 				$ttl = $min_hours;
-			}
-			elsif ( $ttl > $max_hours ) {
-				$ttl = $max_hours;
 			}
 		}
 		else {
